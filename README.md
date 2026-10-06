@@ -5,7 +5,7 @@
 # nvpanel
 
 **NVIDIA Control Panel-style display settings for Linux.**
-Brightness · Contrast · Gamma · Digital Vibrance — with a GTK4 app, a CLI and settings that survive reboots.
+Brightness · Contrast · Gamma · Digital Vibrance — with a GTK4/libadwaita app, a CLI and settings that survive reboots.
 
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
@@ -13,6 +13,8 @@ Brightness · Contrast · Gamma · Digital Vibrance — with a GTK4 app, a CLI a
 ![sessions](https://img.shields.io/badge/GNOME%20Wayland%20%7C%20X11-supported-76b900)
 
 </div>
+
+<div align="center"><img src="docs/screenshot.png" width="460" alt="nvpanel screenshot"></div>
 
 ---
 
@@ -46,10 +48,10 @@ Supported by the installer (package names for the other distros are **untested**
 
 | Distro | Packages installed |
 |---|---|
-| **Ubuntu / Debian / Mint / Pop!_OS** | `python3-gi gir1.2-gtk-4.0 x11-xserver-utils nvidia-settings` |
-| **Fedora** | `python3-gobject gtk4 xrandr nvidia-settings` (RPM Fusion) |
-| **Arch / Manjaro / EndeavourOS / CachyOS** | `python-gobject gtk4 xorg-xrandr nvidia-settings` — or build [`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD) |
-| **openSUSE** | `python3-gobject typelib-1_0-Gtk-4_0 xrandr nvidia-settings` |
+| **Ubuntu / Debian / Mint / Pop!_OS** | `python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 x11-xserver-utils nvidia-settings` |
+| **Fedora** | `python3-gobject gtk4 libadwaita xrandr nvidia-settings` (RPM Fusion) |
+| **Arch / Manjaro / EndeavourOS / CachyOS** | `python-gobject gtk4 libadwaita xorg-xrandr nvidia-settings` — or build [`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD) |
+| **openSUSE** | `python3-gobject typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1 xrandr nvidia-settings` |
 
 Manual run without installing: `python3 nvpanel.py`. Remove with `./uninstall.sh`.
 

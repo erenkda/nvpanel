@@ -5,7 +5,8 @@ import sys
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import GLib, Gtk  # noqa: E402
+gi.require_version("Adw", "1")
+from gi.repository import Adw, GLib, Gtk  # noqa: E402
 
 from .backends import BackendError  # noqa: E402
 from .model import RANGES, Settings, load_config, save_config  # noqa: E402
@@ -13,75 +14,141 @@ from .model import RANGES, Settings, load_config, save_config  # noqa: E402
 APP_ID = "io.github.nvpanel"
 AUTOSTART = os.path.expanduser("~/.config/autostart/nvpanel.desktop")
 
+DESCRIPTIONS = {
+    "brightness": "Raise or lower the overall light level",
+    "contrast": "Difference between dark and bright areas",
+    "gamma": "Brightness of the midtones",
+    "vibrance": "Boost muted colours without over-saturating vivid ones",
+}
+
+CSS = b"""
+.value-label { font-feature-settings: "tnum"; min-width: 4.5em; }
+"""
+
 
 def _exec_cmd() -> str:
     exe = shutil.which("nvpanel")
     return exe if exe else f"{sys.executable} -m nvpanel"
 
 
-class Window(Gtk.ApplicationWindow):
+def _fmt(key: str, value: float) -> str:
+    unit = RANGES[key][4]
+    if key == "gamma":
+        return f"{value:.2f}"
+    sign = "+" if value > 0 and key in ("brightness", "vibrance") else ""
+    return f"{sign}{value:.0f}{unit}"
+
+
+class Window(Adw.ApplicationWindow):
     def __init__(self, app, backend):
-        super().__init__(application=app, title="NVIDIA Settings", default_width=460)
+        super().__init__(application=app, title="NVIDIA Settings",
+                         default_width=560, default_height=740)
         self.backend = backend
         self.config = load_config()
         self.monitors = backend.monitors()
         self._loading = False
         self._apply_src = 0
         self._save_src = 0
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12,
-                      margin_top=16, margin_bottom=16, margin_start=16, margin_end=16)
-        self.set_child(box)
-
-        self.combo = Gtk.DropDown.new_from_strings([m.name for m in self.monitors])
-        self.combo.connect("notify::selected", lambda *_: self._load_monitor())
-        row = Gtk.Box(spacing=8)
-        row.append(Gtk.Label(label="Display", xalign=0, hexpand=True))
-        row.append(self.combo)
-        box.append(row)
-
         self.scales = {}
+        self.value_labels = {}
+
+        caps = backend.capabilities
+        notes = backend.unsupported_notes
+
+        # --- header -------------------------------------------------------
+        header = Adw.HeaderBar()
+        header.set_title_widget(Adw.WindowTitle(title="NVIDIA Settings",
+                                                subtitle=backend.title))
+        reset_all = Gtk.Button(label="Reset all", tooltip_text="Restore defaults for this display")
+        reset_all.connect("clicked", self._on_reset)
+        header.pack_start(reset_all)
+
+        # --- content ------------------------------------------------------
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24,
+                       margin_top=24, margin_bottom=24, margin_start=12, margin_end=12)
+
+        display_group = Adw.PreferencesGroup(title="Display")
+        self.combo = Adw.ComboRow(title="Monitor",
+                                  subtitle="Settings are saved separately for each monitor")
+        self.combo.set_model(Gtk.StringList.new([m.name for m in self.monitors]))
+        self.combo.connect("notify::selected", lambda *_: self._load_monitor())
+        display_group.add(self.combo)
+        page.append(display_group)
+
+        color_group = Adw.PreferencesGroup(
+            title="Colour", description="Changes apply instantly and are remembered.")
         for key, (lo, hi, step, label, unit) in RANGES.items():
-            supported = key in backend.capabilities
-            box.append(Gtk.Label(label=f"{label}", xalign=0))
-            scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, lo, hi, step)
-            scale.set_draw_value(True)
-            scale.set_digits(2 if key == "gamma" else 0)
-            if unit:
-                scale.set_format_value_func(
-                    lambda s, v, u=unit: f"{v:.0f}{u}")
-            scale.set_sensitive(supported)
-            if not supported:
-                note = backend.unsupported_notes.get(key, "Not supported by this backend.")
-                scale.set_tooltip_text(note)
-                box.append(Gtk.Label(label=note, xalign=0, wrap=True, css_classes=["dim-label"]))
-            scale.connect("value-changed", self._on_changed, key)
-            box.append(scale)
-            self.scales[key] = scale
+            color_group.add(self._make_row(key, caps, notes))
+        page.append(color_group)
 
-        self.status = Gtk.Label(xalign=0, wrap=True)
-        box.append(self.status)
+        general = Adw.PreferencesGroup(title="General")
+        self.auto_row = Adw.SwitchRow(
+            title="Apply saved settings at login",
+            subtitle="Runs a small background helper that also re-applies after "
+                     "resume and monitor changes",
+            active=os.path.exists(AUTOSTART))
+        self.auto_row.connect("notify::active", self._on_autostart)
+        general.add(self.auto_row)
+        page.append(general)
 
-        buttons = Gtk.Box(spacing=8)
-        reset = Gtk.Button(label="Reset")
-        reset.connect("clicked", self._on_reset)
-        buttons.append(reset)
-        box.append(buttons)
+        clamp = Adw.Clamp(maximum_size=620, tightening_threshold=480, child=page)
+        scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, child=clamp)
 
-        auto = Gtk.Box(spacing=8)
-        auto.append(Gtk.Label(label="Apply saved settings at login", xalign=0, hexpand=True))
-        self.auto_switch = Gtk.Switch(active=os.path.exists(AUTOSTART), valign=Gtk.Align.CENTER)
-        self.auto_switch.connect("notify::active", self._on_autostart)
-        auto.append(self.auto_switch)
-        box.append(auto)
+        self.toasts = Adw.ToastOverlay(child=scroller)
+        view = Adw.ToolbarView(content=self.toasts)
+        view.add_top_bar(header)
+        self.set_content(view)
 
-        box.append(Gtk.Label(label=f"Backend: {backend.title}", xalign=0,
-                             css_classes=["dim-label"]))
         if not self.monitors:
-            self.status.set_text("No active monitors found.")
+            self._toast("No active monitors found.")
         else:
             self._sync_screen_with_saved()
             self._load_monitor()
+
+    # ------------------------------------------------------------------ rows
+    def _make_row(self, key, caps, notes):
+        lo, hi, step, label, unit = RANGES[key]
+        supported = key in caps
+        default = getattr(Settings(), key)
+
+        title = Gtk.Label(label=label, xalign=0, hexpand=True, css_classes=["heading"])
+        subtitle = Gtk.Label(
+            label=DESCRIPTIONS[key] if supported else notes.get(key, "Not supported by this backend."),
+            xalign=0, wrap=True, css_classes=["dim-label", "caption"])
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
+        text.append(title)
+        text.append(subtitle)
+
+        value = Gtk.Label(label=_fmt(key, default), xalign=1, valign=Gtk.Align.CENTER,
+                          css_classes=["value-label", "numeric"])
+        undo = Gtk.Button(icon_name="edit-undo-symbolic", valign=Gtk.Align.CENTER,
+                          tooltip_text=f"Reset {label.lower()}", css_classes=["flat", "circular"])
+        undo.connect("clicked", lambda _b, k=key: self.scales[k].set_value(getattr(Settings(), k)))
+
+        top = Gtk.Box(spacing=8)
+        top.append(text)
+        top.append(value)
+        top.append(undo)
+
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, lo, hi, step)
+        scale.set_draw_value(False)
+        scale.add_mark(default, Gtk.PositionType.BOTTOM, None)
+        scale.connect("value-changed", self._on_changed, key)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4,
+                      margin_top=12, margin_bottom=6, margin_start=14, margin_end=10)
+        box.append(top)
+        box.append(scale)
+
+        row = Adw.PreferencesRow(child=box, activatable=False, focusable=False)
+        row.set_sensitive(supported)
+        self.scales[key] = scale
+        self.value_labels[key] = value
+        return row
+
+    # ----------------------------------------------------------------- state
+    def _toast(self, text):
+        self.toasts.add_toast(Adw.Toast(title=text, timeout=4))
 
     def _sync_screen_with_saved(self):
         """Make the screen match what the sliders will show.
@@ -94,7 +161,7 @@ class Window(Gtk.ApplicationWindow):
             try:
                 self.backend.apply(mon, self.config.get(mon.name, Settings()))
             except BackendError as e:
-                self.status.set_text(f"Error: {e}")
+                self._toast(f"Error: {e}")
 
     @property
     def monitor(self):
@@ -105,12 +172,14 @@ class Window(Gtk.ApplicationWindow):
         self._loading = True
         for key, scale in self.scales.items():
             scale.set_value(getattr(s, key))
+            self.value_labels[key].set_text(_fmt(key, getattr(s, key)))
         self._loading = False
 
     def _current(self) -> Settings:
         return Settings(**{k: sc.get_value() for k, sc in self.scales.items()})
 
     def _on_changed(self, scale, key):
+        self.value_labels[key].set_text(_fmt(key, scale.get_value()))
         if self._loading:
             return
         if self._apply_src:
@@ -122,9 +191,8 @@ class Window(Gtk.ApplicationWindow):
         s = self._current()
         try:
             self.backend.apply(self.monitor, s)
-            self.status.set_text("")
         except BackendError as e:
-            self.status.set_text(f"Error: {e}")
+            self._toast(f"Error: {e}")
             return False
         if s.is_default():
             self.config.pop(self.monitor.name, None)
@@ -140,19 +208,20 @@ class Window(Gtk.ApplicationWindow):
         try:
             save_config(self.config)
         except OSError as e:
-            self.status.set_text(f"Could not save settings: {e}")
+            self._toast(f"Could not save settings: {e}")
         return False
 
     def _on_reset(self, _btn):
         self._loading = True
         for key, scale in self.scales.items():
             scale.set_value(getattr(Settings(), key))
+            self.value_labels[key].set_text(_fmt(key, getattr(Settings(), key)))
         self._loading = False
         self._apply_now()
 
-    def _on_autostart(self, switch, _p):
+    def _on_autostart(self, row, _p):
         try:
-            if switch.get_active():
+            if row.get_active():
                 os.makedirs(os.path.dirname(AUTOSTART), exist_ok=True)
                 with open(AUTOSTART, "w") as f:
                     f.write(
@@ -163,10 +232,20 @@ class Window(Gtk.ApplicationWindow):
             elif os.path.exists(AUTOSTART):
                 os.remove(AUTOSTART)
         except OSError as e:
-            self.status.set_text(f"Autostart error: {e}")
+            self._toast(f"Autostart error: {e}")
 
 
 def run(backend) -> int:
-    app = Gtk.Application(application_id=APP_ID)
-    app.connect("activate", lambda a: Window(a, backend).present())
+    app = Adw.Application(application_id=APP_ID)
+
+    def on_activate(a):
+        from gi.repository import Gdk
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS)
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        Window(a, backend).present()
+
+    app.connect("activate", on_activate)
     return app.run([sys.argv[0]])

@@ -15,18 +15,18 @@ install_deps() {
     case "$ids" in
     *" ubuntu "*|*" debian "*|*" linuxmint "*|*" pop "*)
         $sudo apt-get update
-        $sudo apt-get install -y python3 python3-gi gir1.2-gtk-4.0 x11-xserver-utils
+        $sudo apt-get install -y python3 python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 x11-xserver-utils
         $sudo apt-get install -y nvidia-settings || echo "note: nvidia-settings not installed (only needed on X11)" ;;
     *" fedora "*|*" rhel "*|*" centos "*)
-        $sudo dnf install -y python3 python3-gobject gtk4 xrandr
+        $sudo dnf install -y python3 python3-gobject gtk4 libadwaita xrandr
         $sudo dnf install -y nvidia-settings || echo "note: nvidia-settings needs RPM Fusion (only needed on X11)" ;;
     *" arch "*|*" manjaro "*|*" endeavouros "*|*" cachyos "*)
-        $sudo pacman -S --needed --noconfirm python python-gobject gtk4 xorg-xrandr nvidia-settings ;;
+        $sudo pacman -S --needed --noconfirm python python-gobject gtk4 libadwaita xorg-xrandr nvidia-settings ;;
     *" opensuse "*|*" suse "*|*" sles "*)
-        $sudo zypper install -y python3 python3-gobject typelib-1_0-Gtk-4_0 xrandr
+        $sudo zypper install -y python3 python3-gobject typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1 xrandr
         $sudo zypper install -y nvidia-settings || echo "note: nvidia-settings not installed (only needed on X11)" ;;
     *)
-        echo "Unknown distro. Install manually: Python 3, PyGObject, GTK 4 (+ xrandr, nvidia-settings for X11)." ;;
+        echo "Unknown distro. Install manually: Python 3, PyGObject, GTK 4, libadwaita (+ xrandr, nvidia-settings for X11)." ;;
     esac
 }
 
