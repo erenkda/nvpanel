@@ -235,6 +235,10 @@ class Window(Adw.ApplicationWindow):
             self._toast(f"Autostart error: {e}")
 
 
+ICON_NAME = "nvpanel"
+ICON_DIR = os.path.join(os.path.dirname(__file__), "icons")
+
+
 def run(backend) -> int:
     app = Adw.Application(application_id=APP_ID)
 
@@ -243,8 +247,12 @@ def run(backend) -> int:
 
         provider = Gtk.CssProvider()
         provider.load_from_data(CSS)
+        display = Gdk.Display.get_default()
         Gtk.StyleContext.add_provider_for_display(
-            Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+            display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        # Bundled icon, so the window icon also works when running from source.
+        Gtk.IconTheme.get_for_display(display).add_search_path(ICON_DIR)
+        Gtk.Window.set_default_icon_name(ICON_NAME)
         Window(a, backend).present()
 
     app.connect("activate", on_activate)

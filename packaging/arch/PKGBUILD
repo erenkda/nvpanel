@@ -27,7 +27,7 @@ build() {
 package() {
   cd nvpanel
   python -m installer --destdir="$pkgdir" dist/*.whl
-  install -Dm644 data/nvpanel.desktop "$pkgdir/usr/share/applications/nvpanel.desktop"
-  install -Dm644 data/nvpanel.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/nvpanel.svg"
+  install -Dm644 data/io.github.nvpanel.desktop "$pkgdir/usr/share/applications/io.github.nvpanel.desktop"
+  install -Dm644 nvpanel/icons/hicolor/scalable/apps/nvpanel.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/nvpanel.svg"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

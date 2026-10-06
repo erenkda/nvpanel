@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="data/nvpanel.svg" width="96" alt="nvpanel logo">
+<img src="nvpanel/icons/hicolor/scalable/apps/nvpanel.svg" width="96" alt="nvpanel logo">
 
 # nvpanel
 

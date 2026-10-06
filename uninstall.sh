@@ -2,7 +2,7 @@
 set -eu
 PREFIX="${PREFIX:-$HOME/.local}"
 rm -rf "$PREFIX/share/nvpanel" "$PREFIX/bin/nvpanel" \
-       "$PREFIX/share/applications/nvpanel.desktop" \
+       "$PREFIX/share/applications/io.github.nvpanel.desktop" \
        "$PREFIX/share/icons/hicolor/scalable/apps/nvpanel.svg" \
        "$HOME/.config/autostart/nvpanel.desktop"
 gnome-extensions disable nvpanel-vibrance@nvpanel.github.io 2>/dev/null || true

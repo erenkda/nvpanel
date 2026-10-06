@@ -43,8 +43,10 @@ cat > "$PREFIX/bin/nvpanel" <<LAUNCH
 PYTHONPATH="$LIB\${PYTHONPATH:+:\$PYTHONPATH}" exec python3 -m nvpanel "\$@"
 LAUNCH
 chmod +x "$PREFIX/bin/nvpanel"
-cp "$HERE/data/nvpanel.desktop" "$PREFIX/share/applications/"
-cp "$HERE/data/nvpanel.svg" "$PREFIX/share/icons/hicolor/scalable/apps/"
+sed "s|^Exec=nvpanel|Exec=$PREFIX/bin/nvpanel|" "$HERE/data/io.github.nvpanel.desktop" > "$PREFIX/share/applications/io.github.nvpanel.desktop"
+cp "$HERE/nvpanel/icons/hicolor/scalable/apps/nvpanel.svg" "$PREFIX/share/icons/hicolor/scalable/apps/"
+command -v gtk4-update-icon-cache >/dev/null && gtk4-update-icon-cache -q -t -f "$PREFIX/share/icons/hicolor" 2>/dev/null || true
+command -v update-desktop-database >/dev/null && update-desktop-database -q "$PREFIX/share/applications" 2>/dev/null || true
 
 echo
 echo "Installed nvpanel to $PREFIX (make sure $PREFIX/bin is in your PATH)."
