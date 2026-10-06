@@ -1,0 +1,7 @@
+{
+  "uuid": "nvpanel-vibrance@nvpanel.github.io",
+  "name": "nvpanel Vibrance",
+  "description": "Software digital vibrance for GNOME/Wayland, controlled by nvpanel over D-Bus (io.github.nvpanel.Vibrance).",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "url": "https://github.com/"
+}

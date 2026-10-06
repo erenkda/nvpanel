@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=NVIDIA Settings (nvpanel)
+Comment=Brightness, contrast, gamma and digital vibrance for NVIDIA GPUs
+Exec=nvpanel
+Icon=nvpanel
+Terminal=false
+Categories=Settings;HardwareSettings;GTK;
+Keywords=nvidia;vibrance;brightness;gamma;display;

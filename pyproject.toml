@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nvpanel"
+version = "0.1.0"
+description = "NVIDIA Control Panel-style display settings (brightness, contrast, gamma, digital vibrance) for Linux"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = ["PyGObject"]
+
+[project.scripts]
+nvpanel = "nvpanel.cli:main"
+
+[tool.setuptools]
+packages = ["nvpanel", "nvpanel.backends"]
+
+[tool.setuptools.package-data]
+nvpanel = ["gnome-extension/*/*"]

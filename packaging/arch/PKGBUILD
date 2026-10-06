@@ -1,0 +1,33 @@
+# Maintainer: (your name <you@example.com>)
+pkgname=nvpanel-git
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="NVIDIA Control Panel-style display settings (brightness, contrast, gamma, vibrance)"
+arch=('any')
+url="https://github.com/erenkda/nvpanel"
+license=('MIT')
+depends=('python' 'python-gobject' 'gtk4' 'xorg-xrandr')
+optdepends=('nvidia-settings: Digital Vibrance on X11')
+makedepends=('git' 'python-build' 'python-installer' 'python-setuptools' 'python-wheel')
+provides=('nvpanel')
+conflicts=('nvpanel')
+source=("git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd nvpanel
+  grep -m1 '^version' pyproject.toml | cut -d'"' -f2
+}
+
+build() {
+  cd nvpanel
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd nvpanel
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm644 data/nvpanel.desktop "$pkgdir/usr/share/applications/nvpanel.desktop"
+  install -Dm644 data/nvpanel.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/nvpanel.svg"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
